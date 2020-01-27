@@ -69,7 +69,7 @@ void sigint_handler(int sig);
 int parseline(const char *cmdline, char **argv);
 int parseargs(char **argv, int *cmds, int *stdin_redir, int *stdout_redir);
 void sigquit_handler(int sig);
-int get_cmds_number(int *cmds);
+
 
 void clearjob(struct job_t *job);
 void initjobs(struct job_t *jobs);
@@ -82,11 +82,17 @@ struct job_t *getjobjid(struct job_t *jobs, int jid);
 int pid2jid(pid_t pid);
 void listjobs(struct job_t *jobs);
 
+
+
 void usage(void);
 void unix_error(char *msg);
 void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
+
+// My  helper functions
+int get_cmds_number(int *cmds);
+void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds);
 
 /*
  * main - The shell's main routine
@@ -169,7 +175,7 @@ int main(int argc, char **argv)
 void eval(char *cmdline)
 {
   char *argv[MAXLINE];
-  int argc = 0;
+  // int argc = 0;
   int cmds[MAXARGS];
   int stdin_redir[MAXARGS];
   int stdout_redir[MAXARGS];
@@ -177,9 +183,29 @@ void eval(char *cmdline)
 
   parseline(cmdline, argv);
   parseargs(argv, cmds, stdin_redir, stdout_redir);
-  argc = get_cmds_number(cmds);
+
+  const int num_cmds = get_cmds_number(cmds);
+  execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
+
+  // const int commands = cmds; FIXME: MAYBE ADD THESE AS CONSTS?
+  // const int in_redir = stdin_redir;
+  // const int out_redir = stdout_redir;
+
 
   return;
+}
+
+void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds) { //FIXME: MAYBE MAKE THESE CONSTS?
+  for (int i = 0; i < num_cmds; i++) {
+    char *cmd_name = *(argv + commands[i]);
+    char *in_path = *(argv + in_redir[i]);
+    char *out_path = *(argv + out_redir[i]);
+    printf("cmd: %s\n", cmd_name );
+    printf("in: %s\n", in_path);
+    printf("out: %s\n", out_path);
+    printf("\n");
+  }
+
 }
 
 int get_cmds_number(int *cmds) {
