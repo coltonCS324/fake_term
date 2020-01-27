@@ -1,0 +1,47 @@
+
+       For this lab, implementing waitfg() and sigchld_handler() are recommended, but not required!  The are not required because we will have just introduced signals in class, and those functions require some understanding of how they work.  However, they will be required for the next lab!  This has been updated in the writeup above (updated Jan 21).  The pertinent text is here:
+"In the next lab, you implement the cleanup of child processes more comprehensively (with waitfg() and sigchld_handler()), in this lab, you can simply use waitpid() to wait for the last child in a given pipeline to run to completion."
+
+Additional Helps:
+
+Processes, fork, exec, pipe, file descriptors  Download 
+parseline() / parseargs() usage example:
+Suppose we have the following command line:
+/bin/cat < input.txt | /bin/grep [a-z] > output.txt
+
+parseline() is passed an array, char *args[], and it is populated thus:
+
+args[0] = "/bin/cat";
+args[1] = "<";
+args[2] = "input.txt";
+args[3] = "|";
+args[4] = "/bin/grep";
+args[5] = "[a-z]";
+args[6] = ">";
+args[7] = "output.txt";
+args[8] = NULL;
+
+Now, after you pass args to parseargs(), as well as cmds[] stdin_redir[], and stdout_redir[], they look like this:
+
+args[0] = "/bin/cat";
+args[1] = NULL;
+args[2] = "input.txt";
+args[3] = NULL;
+args[4] = "/bin/grep";
+args[5] = "[a-z]";
+args[6] = NULL;
+args[7] = "output.txt";
+args[8] = NULL;
+
+cmds[0] = 0;
+cmds[1] = 4;
+
+stdin_redir[0] = 2;
+stdin_redir[1] = -1;
+
+stdout_redir[0] = -1;
+stdout_redir[1] = 7;
+
+Now, you can pass the args for execve() for the first (0th) command by simply doing something like:
+
+args[cmds[0]] : [],
