@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 
     /* Execute the shell's read/eval loop */
     while (1) {
-      printf("RAN\n" );
 
 	/* Read command line */
 	if (emit_prompt) {
@@ -176,26 +175,16 @@ int main(int argc, char **argv)
 void eval(char *cmdline)
 {
   char *argv[MAXLINE];
-  // int argc = 0;
   int cmds[MAXARGS];
   int stdin_redir[MAXARGS];
   int stdout_redir[MAXARGS];
   int num_cmds;
-
-
-
   parseline(cmdline, argv);
-  // printf("HERE\n");
+
   if(!builtin_cmd(argv)) {
     num_cmds = parseargs(argv, cmds, stdin_redir, stdout_redir);
     execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
   }
-  // printf("FINISHED THAT\n" );
-
-  // const int commands = cmds; FIXME: MAYBE ADD THESE AS CONSTS?
-  // const int in_redir = stdin_redir;
-  // const int out_redir = stdout_redir;
-
 
   return;
 }
@@ -204,6 +193,7 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
   int num_pipes = num_cmds - 1;
   int fds[num_pipes][2];
   int pid;
+  int first_child_pid;
 
   for(int i = 0; i < num_pipes; i++) {
     const int pipe_status = pipe(&fds[i][0]);
@@ -218,15 +208,30 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
     char *out_path = *(argv + out_redir[i]);
     char *env[] = { NULL };
 
+    if (i > 0) {
+
+    }
+
     if ((pid = fork()) == 0 ) {
+      if (!first_child_pid) {
+        first_child_pid = getpid();
+
+      }
       // printf("Executing %s\n", cmd_name);
+      if ( i < num_cmds - 1) {
+        dup2(fds[i][0], 1);
+      }
+      if (i > 0) {
+        dup2(fds[i - 1][1], 0)
+      }
       execve(cmd_name, &cmd_name, env);
       exit(0);
     } else {
+      if (i == 0) {
+        first_child_pid = pid;
+      }
       int child_status;
       waitpid(-1, &child_status, WNOHANG | WUNTRACED);
-      // printf("New child %d\n",pid);
-      // printf("Done executing %s\n", cmd_name);
     }
   }
   return;
