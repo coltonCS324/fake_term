@@ -139,6 +139,7 @@ int main(int argc, char **argv)
 
     /* Execute the shell's read/eval loop */
     while (1) {
+      printf("RAN\n" );
 
 	/* Read command line */
 	if (emit_prompt) {
@@ -179,13 +180,17 @@ void eval(char *cmdline)
   int cmds[MAXARGS];
   int stdin_redir[MAXARGS];
   int stdout_redir[MAXARGS];
+  int num_cmds;
+
 
 
   parseline(cmdline, argv);
-  parseargs(argv, cmds, stdin_redir, stdout_redir);
-
-  const int num_cmds = get_cmds_number(cmds);
-  execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
+  // printf("HERE\n");
+  if(!builtin_cmd(argv)) {
+    num_cmds = parseargs(argv, cmds, stdin_redir, stdout_redir);
+    execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
+  }
+  // printf("FINISHED THAT\n" );
 
   // const int commands = cmds; FIXME: MAYBE ADD THESE AS CONSTS?
   // const int in_redir = stdin_redir;
@@ -196,15 +201,35 @@ void eval(char *cmdline)
 }
 
 void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds) { //FIXME: MAYBE MAKE THESE CONSTS?
+  int num_pipes = num_cmds - 1;
+  int fds[num_pipes][2];
+  int pid;
+
+  for(int i = 0; i < num_pipes; i++) {
+    const int pipe_status = pipe(&fds[i][0]);
+    if (pipe_status != 0) {
+      printf("An error occured during pipe creation\n");
+    }
+  }
+
   for (int i = 0; i < num_cmds; i++) {
     char *cmd_name = *(argv + commands[i]);
     char *in_path = *(argv + in_redir[i]);
     char *out_path = *(argv + out_redir[i]);
-    printf("cmd: %s\n", cmd_name );
-    printf("in: %s\n", in_path);
-    printf("out: %s\n", out_path);
-    printf("\n");
+    char *env[] = { NULL };
+
+    if ((pid = fork()) == 0 ) {
+      // printf("Executing %s\n", cmd_name);
+      execve(cmd_name, &cmd_name, env);
+      exit(0);
+    } else {
+      int child_status;
+      waitpid(-1, &child_status, WNOHANG | WUNTRACED);
+      // printf("New child %d\n",pid);
+      // printf("Done executing %s\n", cmd_name);
+    }
   }
+  return;
 
 }
 
@@ -348,6 +373,16 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv)
 {
+  char *first_cmd = *argv;
+  if (strcmp("quit", first_cmd) == 0) {
+    // execve(first_cmd, &first_cmd, env);
+    exit(0);
+    // printf("DINGUS\n");
+    // char *env[] = { NULL };
+    // execve(*argv, argv, env);
+    return 1;
+  }
+
     return 0;     /* not a builtin command */
 }
 
