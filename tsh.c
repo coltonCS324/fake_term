@@ -181,12 +181,11 @@ void eval(char *cmdline)
   int num_cmds;
   parseline(cmdline, argv);
 
+printf("HERE\n", );
   if(!builtin_cmd(argv)) {
     num_cmds = parseargs(argv, cmds, stdin_redir, stdout_redir);
     execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
   }
-
-  return;
 }
 
 void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds) { //FIXME: MAYBE MAKE THESE CONSTS?
@@ -203,14 +202,14 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
   }
 
   for (int i = 0; i < num_cmds; i++) {
-    char *cmd_name = *(argv + commands[i]);
+    char *cmd_name = argv[commands[i]];
     char *in_path = *(argv + in_redir[i]);
     char *out_path = *(argv + out_redir[i]);
     char *env[] = { NULL };
 
-    if (i > 0) {
-
-    }
+    // if (i > 0) {
+    //
+    // }
 
     if ((pid = fork()) == 0 ) {
       if (!first_child_pid) {
@@ -222,7 +221,7 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
         dup2(fds[i][0], 1);
       }
       if (i > 0) {
-        dup2(fds[i - 1][1], 0)
+        dup2(fds[i - 1][1], 0);
       }
       execve(cmd_name, &cmd_name, env);
       exit(0);
@@ -378,14 +377,13 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv)
 {
-  char *first_cmd = *argv;
-  if (strcmp("quit", first_cmd) == 0) {
+  // char *first_cmd = *argv;
+  if (!strcmp(argv[0],"quit")) {
     // execve(first_cmd, &first_cmd, env);
     exit(0);
     // printf("DINGUS\n");
     // char *env[] = { NULL };
     // execve(*argv, argv, env);
-    return 1;
   }
 
     return 0;     /* not a builtin command */
