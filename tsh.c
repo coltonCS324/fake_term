@@ -174,18 +174,21 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline)
 {
-  char *argv[MAXLINE];
+  char *argv[MAXARGS];
+  char buffer[MAXLINE];
   int cmds[MAXARGS];
   int stdin_redir[MAXARGS];
   int stdout_redir[MAXARGS];
   int num_cmds;
-  parseline(cmdline, argv);
+  strcpy(buffer, cmdline);
+  parseline(buffer, argv);
 
 // printf("HERE\n", );
   if(!builtin_cmd(argv)) {
     num_cmds = parseargs(argv, cmds, stdin_redir, stdout_redir);
     execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
   }
+  return;
 }
 
 void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds) { //FIXME: MAYBE MAKE THESE CONSTS?
@@ -203,34 +206,36 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
 
   for (int i = 0; i < num_cmds; i++) {
     char *cmd_name = argv[commands[i]];
-    char *in_path = *(argv + in_redir[i]);
-    char *out_path = *(argv + out_redir[i]);
+    // char *in_path = *(argv + in_redir[i]);
+    // char *out_path = *(argv + out_redir[i]);
     char *env[] = { NULL };
-
-    // if (i > 0) {
-    //
-    // }
-
     if ((pid = fork()) == 0 ) {
       if (!first_child_pid) {
         first_child_pid = getpid();
-
       }
-      // printf("Executing %s\n", cmd_name);
+      printf("Executing %s\n", cmd_name);
+
       if ( i < num_cmds - 1) {
+        FILE *read_stream = fdopen(fds[i][0], "r");
         dup2(fds[i][0], 1);
+
+      } else {
+        close(fds[i][1]);
       }
       if (i > 0) {
+        FILE *write_stream = fdopen(fds[i - 1][1], "w");
         dup2(fds[i - 1][1], 0);
       }
-      execve(cmd_name, &cmd_name, env);
+      execve(argv[commands[i]], &argv[commands[i]], env);
       exit(0);
     } else {
       if (i == 0) {
         first_child_pid = pid;
       }
       int child_status;
-      waitpid(-1, &child_status, WNOHANG | WUNTRACED);
+      // printf("parent\n");
+      wait(&child_status);
+      // printf("PASSED HERE\n");
     }
   }
   return;
