@@ -12,6 +12,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /* Misc manifest constants */
 #define MAXLINE    1024   /* max line size */
@@ -192,40 +194,46 @@ void eval(char *cmdline)
 }
 
 void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds) { //FIXME: MAYBE MAKE THESE CONSTS?
-  int num_pipes = num_cmds - 1;
-  int fds[num_pipes][2];
+  // int num_pipes = num_cmds - 1;
+  int stdin_copy = dup(0);
+  int stdout_copy = dup(1);
+  // int fds[2];
   int pid;
   int first_child_pid;
 
-  for(int i = 0; i < num_pipes; i++) {
-    const int pipe_status = pipe(&fds[i][0]);
-    if (pipe_status != 0) {
-      printf("An error occured during pipe creation\n");
-    }
-  }
+    // const int pipe_status = pipe(fds);
+
 
   for (int i = 0; i < num_cmds; i++) {
-    char *cmd_name = argv[commands[i]];
-    // char *in_path = *(argv + in_redir[i]);
-    // char *out_path = *(argv + out_redir[i]);
+    // char *cmd_name = argv[commands[i]];
+    char *in_path = *(argv + in_redir[i]);
+    int fd_redirect_in;
+    int fd_redirect_out;
+    // printf("%d\n",i );
+    char *out_path = *(argv + out_redir[i]);
+
+    if (in_path) {
+      fd_redirect_in = open(in_path, O_RDONLY);
+      dup2(fd_redirect_in, 0);
+    }
+    if (out_path) {
+      fd_redirect_out = open(out_path,  O_CREAT | O_WRONLY | O_TRUNC, 0600);
+      dup2(fd_redirect_out, 1);
+    }
+    // else if (i > 0) {
+    //   fopen(fds[1], "w");
+    //   dup2(fds[1], 0);
+    // }
     char *env[] = { NULL };
     if ((pid = fork()) == 0 ) {
       if (!first_child_pid) {
         first_child_pid = getpid();
       }
-      printf("Executing %s\n", cmd_name);
-
-      if ( i < num_cmds - 1) {
-        FILE *read_stream = fdopen(fds[i][0], "r");
-        dup2(fds[i][0], 1);
-
-      } else {
-        close(fds[i][1]);
-      }
-      if (i > 0) {
-        FILE *write_stream = fdopen(fds[i - 1][1], "w");
-        dup2(fds[i - 1][1], 0);
-      }
+      // printf("Executing %s\n", cmd_name);
+      // if (i < (num_cmds - 1)) {
+      //   fopen(fds[0], "r");
+      //   dup2(fds[0], 1);
+      // }
       execve(argv[commands[i]], &argv[commands[i]], env);
       exit(0);
     } else {
@@ -235,6 +243,17 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
       int child_status;
       // printf("parent\n");
       wait(&child_status);
+      if (in_path) {
+        dup2(stdin_copy, 0);
+        close(fd_redirect_in);
+      }
+      if (out_path) {
+        dup2(stdout_copy, 1);
+        close(fd_redirect_out);
+      }
+
+      // close(fds[0]);
+      // close(fds[1]);
       // printf("PASSED HERE\n");
     }
   }
