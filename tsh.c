@@ -181,7 +181,7 @@ void eval(char *cmdline)
   int num_cmds;
   parseline(cmdline, argv);
 
-printf("HERE\n", );
+// printf("HERE\n", );
   if(!builtin_cmd(argv)) {
     num_cmds = parseargs(argv, cmds, stdin_redir, stdout_redir);
     execute_cmds(cmds, stdin_redir, stdout_redir, argv, num_cmds);
