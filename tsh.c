@@ -197,19 +197,19 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
   // int num_pipes = num_cmds - 1;
   int stdin_copy = dup(0);
   int stdout_copy = dup(1);
-  // int fds[2];
+  int fds[num_cmds -1][2];
   int pid;
   int first_child_pid;
 
-    // const int pipe_status = pipe(fds);
+  int fd_write_pipe;
+  int fd_read_pipe;
 
 
   for (int i = 0; i < num_cmds; i++) {
-    // char *cmd_name = argv[commands[i]];
     char *in_path = *(argv + in_redir[i]);
     int fd_redirect_in;
     int fd_redirect_out;
-    // printf("%d\n",i );
+
     char *out_path = *(argv + out_redir[i]);
 
     if (in_path) {
@@ -220,20 +220,11 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
       fd_redirect_out = open(out_path,  O_CREAT | O_WRONLY | O_TRUNC, 0600);
       dup2(fd_redirect_out, 1);
     }
-    // else if (i > 0) {
-    //   fopen(fds[1], "w");
-    //   dup2(fds[1], 0);
-    // }
     char *env[] = { NULL };
     if ((pid = fork()) == 0 ) {
       if (!first_child_pid) {
         first_child_pid = getpid();
       }
-      // printf("Executing %s\n", cmd_name);
-      // if (i < (num_cmds - 1)) {
-      //   fopen(fds[0], "r");
-      //   dup2(fds[0], 1);
-      // }
       execve(argv[commands[i]], &argv[commands[i]], env);
       exit(0);
     } else {
@@ -241,8 +232,6 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
         first_child_pid = pid;
       }
       int child_status;
-      // printf("parent\n");
-      wait(&child_status);
       if (in_path) {
         dup2(stdin_copy, 0);
         close(fd_redirect_in);
@@ -251,10 +240,7 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
         dup2(stdout_copy, 1);
         close(fd_redirect_out);
       }
-
-      // close(fds[0]);
-      // close(fds[1]);
-      // printf("PASSED HERE\n");
+      wait(&child_status);
     }
   }
   return;
