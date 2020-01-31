@@ -194,16 +194,19 @@ void eval(char *cmdline)
 }
 
 void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int num_cmds) { //FIXME: MAYBE MAKE THESE CONSTS?
-  // int num_pipes = num_cmds - 1;
+  int num_pipes = num_cmds - 1;
+  int fds[num_pipes][2];
   int stdin_copy = dup(0);
   int stdout_copy = dup(1);
-  int fds[num_cmds -1][2];
   int pid;
   int first_child_pid;
 
-  int fd_write_pipe;
-  int fd_read_pipe;
-
+  for(int i = 0; i < num_pipes; i++) {
+    const int pipe_status = pipe(&fds[i][0]);
+    if (pipe_status != 0) {
+      printf("An error occured during pipe creation\n");
+    }
+  }
 
   for (int i = 0; i < num_cmds; i++) {
     char *in_path = *(argv + in_redir[i]);
@@ -225,13 +228,37 @@ void execute_cmds(int *commands, int *in_redir, int *out_redir, char **argv, int
       if (!first_child_pid) {
         first_child_pid = getpid();
       }
+      setpgid(getpid(), first_child_pid);
+      if ( i < num_cmds - 1) {
+        dup2(fds[i][1], 1);
+      }
+      if (i > 0) {
+        dup2(fds[i - 1][0], 0);
+      }
+      for (int j = 0; j < num_pipes; j++) {
+        close(fds[j][0]);
+        close(fds[j][1]);
+      }
       execve(argv[commands[i]], &argv[commands[i]], env);
       exit(0);
     } else {
       if (i == 0) {
         first_child_pid = pid;
       }
+
       int child_status;
+      close(fds[i][1]);
+      if (i > 0) {
+        close(fds[i - 1][0]);
+      }
+      if (i == num_cmds - 1) {
+        dup2(stdin_copy, 0);
+        dup2(stdout_copy, 1);
+        for (int j = 0; j < num_pipes; j++) {
+          close(fds[j][0]);
+          close(fds[j][1]);
+        }
+      }
       if (in_path) {
         dup2(stdin_copy, 0);
         close(fd_redirect_in);
